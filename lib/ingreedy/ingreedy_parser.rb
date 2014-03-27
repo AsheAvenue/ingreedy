@@ -1,6 +1,6 @@
 class IngreedyParser
 
-  attr_reader :amount, :unit, :ingredient, :query
+  attr_reader :amount, :unit, :ingredient, :query, :container_unit, :package_unit
 
   def initialize(query)
     @query = query
@@ -23,9 +23,10 @@ class IngreedyParser
     @ingredient_string = results[:unit_and_ingredient]
     @container_amount = results[:container_amount]
     @container_unit = results[:container_unit]
+    @container_size = results[:container_size]
 
-    parse_amount results[:amount], results[:fraction]
     parse_unit_and_ingredient
+    parse_amount results[:amount], results[:fraction]
   end
 
   private
@@ -39,11 +40,11 @@ class IngreedyParser
       fraction = numerator / denominator
     end
     @amount = amount_string.to_f + fraction
-    @amount *= @container_amount.to_f if @container_amount
+    @amount *= @container_amount.to_f if @container_amount and !@package_unit
   end
-  def set_unit_variations(unit, variations)
+  def set_unit_variations(unit, variations, package_unit = false)
     variations.each do |abbrev|
-      @unit_map[abbrev] = unit
+      @unit_map[abbrev] = {unit: unit, package_unit: package_unit}
     end
   end
   def create_unit_map
@@ -51,54 +52,65 @@ class IngreedyParser
     # english units
     set_unit_variations :cup, ["c.", "c", "cup", "cups"]
     set_unit_variations :fluid_ounce, ["fl. oz.", "fl oz", "fluid ounce", "fluid ounces"]
-    set_unit_variations :gallon, ["gal", "gal.", "gallon", "gallons"]
-    set_unit_variations :ounce, ["oz", "oz.", "ounce", "ounces"]
-    set_unit_variations :pint, ["pt", "pt.", "pint", "pints"]
-    set_unit_variations :pound, ["lb", "lb.", "pound", "pounds"]
-    set_unit_variations :quart, ["qt", "qt.", "qts", "qts.", "quart", "quarts"]
+    set_unit_variations :gallon, ["gal.", "gal", "gallon", "gallons"]
+    set_unit_variations :ounce, ["oz.", "oz", "ounce", "ounces"]
+    set_unit_variations :pint, ["pt.", "pt", "pint", "pints"]
+    set_unit_variations :pound, ["lb.", "lb", "pound", "pounds"]
+    set_unit_variations :quart, ["qt.", "qt", "qts", "qts.", "quart", "quarts"]
     set_unit_variations :tablespoon, ["tbsp.", "tbsp", "T", "T.", "tablespoon", "tablespoons"]
     set_unit_variations :teaspoon, ["tsp.", "tsp", "t", "t.", "teaspoon", "teaspoons"]
     # metric units
-    set_unit_variations :gram, ["g", "g.", "gr", "gr.", "gram", "grams"]
-    set_unit_variations :kilogram, ["kg", "kg.", "kilogram", "kilograms"]
-    set_unit_variations :liter, ["l", "l.", "liter", "liters"]
-    set_unit_variations :milligram, ["mg", "mg.", "milligram", "milligrams"]
-    set_unit_variations :milliliter, ["ml", "ml.", "milliliter", "milliliters"]
+    set_unit_variations :gram, ["g.", "g", "gr", "gr.", "gram", "grams"]
+    set_unit_variations :kilogram, ["kg.", "kg", "kilogram", "kilograms"]
+    set_unit_variations :liter, ["l.", "l", "liter", "liters"]
+    set_unit_variations :milligram, ["mg.", "mg", "milligram", "milligrams"]
+    set_unit_variations :milliliter, ["ml.", "ml", "milliliter", "milliliters"]
     # nonstandard units
     set_unit_variations :pinch, ["pinch", "pinches"]
     set_unit_variations :dash, ["dash", "dashes"]
     set_unit_variations :touch, ["touch", "touches"]
     set_unit_variations :handful, ["handful", "handfuls"]
-    set_unit_variations :can, ["can", "cans"]
+    set_unit_variations :can, ["can", "cans"], true
     set_unit_variations :glass, ["glass", "glasses"]
+
+    # Added by Ashe
+    set_unit_variations :package, ["packages"], true
   end
+
+  def contains_word_characters?(str)
+    /[A-Z][a-z]/.match(str)
+  end
+
   def parse_unit
     create_unit_map if @unit_map.nil?
-
-    @unit_map.each do |abbrev, unit|
-      if @ingredient_string.start_with?(abbrev + " ")
+    @unit_map.each do |abbrev, unit_data|
+      if /^#{abbrev}[^\w]+/.match @ingredient_string
         # if a unit is found, remove it from the ingredient string
         @ingredient_string.sub! abbrev, ""
-        @unit = unit
+        container_string = contains_word_characters?(@container_size) ? @container_size.try(:strip) : ''
+        @unit = "#{container_string} #{unit_data[:unit].to_s.try(:strip)}".strip
+        @package_unit = unit_data[:package_unit]
       end
     end
 
     # if no unit yet, try it again downcased
     if @unit.nil?
       @ingredient_string.downcase!
-      @unit_map.each do |abbrev, unit|
+      @unit_map.each do |abbrev, unit_data|
         if @ingredient_string.start_with?(abbrev + " ")
           # if a unit is found, remove it from the ingredient string
           @ingredient_string.sub! abbrev, ""
-          @unit = unit
+          container_string = contains_word_characters?(@container_size) ? @container_size.try(:strip) : ''
+          @unit = "#{container_string} #{unit_data[:unit].to_s.try(:strip)}".strip
+          @package_unit = unit_data[:package_unit]
         end
       end
     end
 
     # if we still don't have a unit, check to see if we have a container unit
     if @unit.nil? and @container_unit
-      @unit_map.each do |abbrev, unit|
-        @unit = unit if abbrev == @container_unit
+      @unit_map.each do |abbrev, unit_data|
+        @unit = unit_data[:unit] if abbrev == @container_unit
       end
     end
   end
