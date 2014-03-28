@@ -76,6 +76,7 @@ class IngreedyParser
     # Added by Ashe
     set_unit_variations :package, ["packages", "package"], true
     set_unit_variations :container, ["containers", "container"], true
+    set_unit_variations :square, ["squares", "square"], true
   end
 
   def contains_word_characters?(str)
