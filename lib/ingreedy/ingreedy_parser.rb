@@ -74,11 +74,12 @@ class IngreedyParser
     set_unit_variations :glass, ["glass", "glasses"]
 
     # Added by Ashe
-    set_unit_variations :package, ["packages"], true
+    set_unit_variations :package, ["packages", "package"], true
+    set_unit_variations :container, ["containers", "container"], true
   end
 
   def contains_word_characters?(str)
-    /[A-Z][a-z]/.match(str)
+    /[A-Za-z]/.match(str)
   end
 
   def parse_unit
