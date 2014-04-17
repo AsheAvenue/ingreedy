@@ -21,6 +21,7 @@ class IngreedyParser
     results = ingreedy_regex.match(@query)
 
     @ingredient_string = results[:unit_and_ingredient]
+    @original_ingredient_string = @ingredient_string
     @container_amount = results[:container_amount]
     @container_unit = results[:container_unit]
     @container_size = results[:container_size]
@@ -77,6 +78,7 @@ class IngreedyParser
     set_unit_variations :package, ["packages", "package"], true
     set_unit_variations :container, ["containers", "container"], true
     set_unit_variations :square, ["squares", "square"], true
+    set_unit_variations :slice, ["slices", "slice"], true
   end
 
   def contains_word_characters?(str)
@@ -88,9 +90,13 @@ class IngreedyParser
     @unit_map.each do |abbrev, unit_data|
       if /^#{abbrev}[^\w]+/.match @ingredient_string
         # if a unit is found, remove it from the ingredient string
-        @ingredient_string.sub! abbrev, ""
+        @ingredient_string.sub! abbrev, "" unless unit_data[:package_unit]
         container_string = contains_word_characters?(@container_size) ? @container_size.try(:strip) : ''
-        @unit = "#{container_string} #{unit_data[:unit].to_s.try(:strip)}".strip
+        @unit = unit_data[:unit].to_s.try(:strip)
+        if unit_data[:package_unit]
+          @unit = ''
+          @ingredient_string = "#{@container_size.try(:strip)} #{@ingredient_string.try(:strip)}".strip 
+        end
         @package_unit = unit_data[:package_unit]
       end
     end
@@ -99,23 +105,21 @@ class IngreedyParser
     if @unit.nil?
       @ingredient_string.downcase!
       @unit_map.each do |abbrev, unit_data|
-        if @ingredient_string.start_with?(abbrev + " ")
+        if /^#{abbrev}[^\w]+/.match @ingredient_string
           # if a unit is found, remove it from the ingredient string
-          @ingredient_string.sub! abbrev, ""
+          @ingredient_string.sub! abbrev, "" unless unit_data[:package_unit]
           container_string = contains_word_characters?(@container_size) ? @container_size.try(:strip) : ''
-          @unit = "#{container_string} #{unit_data[:unit].to_s.try(:strip)}".strip
+          @unit = unit_data[:unit].to_s.try(:strip)
+          if unit_data[:package_unit]
+            @unit = ''
+            @ingredient_string = "#{@container_size.try(:strip)} #{@ingredient_string.try(:strip)}".strip
+          end
           @package_unit = unit_data[:package_unit]
         end
       end
     end
-
-    # if we still don't have a unit, check to see if we have a container unit
-    if @unit.nil? and @container_unit
-      @unit_map.each do |abbrev, unit_data|
-        @unit = unit_data[:unit] if abbrev == @container_unit
-      end
-    end
   end
+
   def parse_unit_and_ingredient
     parse_unit
     # clean up ingredient string
