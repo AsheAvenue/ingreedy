@@ -2,6 +2,37 @@ class IngreedyParser
 
   attr_reader :amount, :unit, :ingredient, :query, :container_unit, :package_unit
 
+  UNITS = [
+    [:cup, ["c.", "c", "cup", "cups"]],
+    [:fluid_ounce, ["fl. oz.", "fl oz", "fluid ounce", "fluid ounces"]],
+    [:gallon, ["gal.", "gal", "gallon", "gallons"]],
+    [:ounce, ["oz.", "oz", "ounce", "ounces"]],
+    [:pint, ["pt.", "pt", "pint", "pints"]],
+    [:pound, ["lb.", "lb", "pound", "pounds"]],
+    [:quart, ["qt.", "qt", "qts", "qts.", "quart", "quarts"]],
+    [:tablespoon, ["tbsp.", "tbsp", "T", "T.", "tablespoon", "tablespoons"]],
+    [:teaspoon, ["tsp.", "tsp", "t", "t.", "teaspoon", "teaspoons"]],
+    [:gram, ["g.", "g", "gr", "gr.", "gram", "grams"]],
+    [:kilogram, ["kg.", "kg", "kilogram", "kilograms"]],
+    [:liter, ["l.", "l", "liter", "liters"]],
+    [:milligram, ["mg.", "mg", "milligram", "milligrams"]],
+    [:milliliter, ["ml.", "ml", "milliliter", "milliliters"]],
+    [:pinch, ["pinch", "pinches"]],
+    [:dash, ["dash", "dashes"]],
+    [:touch, ["touch", "touches"]],
+    [:handful, ["handful", "handfuls"]],
+    [:can, ["can", "cans"], true],
+    [:glass, ["glass", "glasses"]],
+    [:package, ["packages", "package"], true],
+    [:container, ["containers", "container"], true],
+    [:square, ["squares", "square"], true],
+    [:slice, ["slices", "slice"], true]
+  ]
+
+  def self.units
+    UNITS
+  end
+
   def initialize(query)
     @query = query
   end
